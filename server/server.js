@@ -12,6 +12,16 @@ const typeDefs = `
         items (type: String):[Item]
     }
 
+    input ItemInput{
+      type: String
+      description: String
+    }
+
+    type Mutation{
+      saveItem(item: ItemInput): Item
+      deleteItem(id: Int): Boolean
+    }
+
 `;
 
 const items = [
@@ -27,6 +37,21 @@ const resolvers = {
   Query: {
     items(_, args) {
       return items.filter(x => x.type == args.type);
+    }
+  },
+  Mutation: {
+    saveItem(_, args) {
+      const item = args.item;
+      item.id = items[items.length - 1].id + 1;
+      items.push(item);
+      return item;
+    },
+    deleteItem(_, args) {
+      const id = args.id;
+      const item = items.find(item => item.id === id);
+      if (!item) return false;
+      items.splice(items.indexOf(item), 1);
+      return true;
     }
   }
 };

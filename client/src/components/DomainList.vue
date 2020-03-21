@@ -6,18 +6,19 @@
           <div class="col-md">
             <AppItemList
               title="Prefix"
-              v-bind:items="prefixes"
-              v-on:addItem="addPrefix"
-              v-on:deleteItem="deletePrefix"
+              type="prefix"
+              v-bind:items="items.prefix"
+              v-on:addItem="addItem"
+              v-on:deleteItem="deleteItem"
             ></AppItemList>
           </div>
           <div class="col-md">
-            <AppItemList></AppItemList>
             <AppItemList
               title="Suffix"
-              v-bind:items="suffixes"
-              v-on:addItem="addSuffix"
-              v-on:deleteItem="deleteSuffix"
+              type="suffix"
+              v-bind:items="items.suffix"
+              v-on:addItem="addItem"
+              v-on:deleteItem="deleteItem"
             ></AppItemList>
           </div>
         </div>
@@ -35,19 +36,11 @@
         <div class="card">
           <div class="card-body">
             <ul class="list-group">
-              <li
-                class="list-group-item"
-                v-for="domain in domains"
-                v-bind:key="domain.name"
-              >
+              <li class="list-group-item" v-for="domain in domains" v-bind:key="domain.name">
                 <div class="row">
                   <div class="col-md">{{ domain.name }}</div>
                   <div class="col-md text-right">
-                    <a
-                      class="btn btn-info"
-                      v-bind:href="domain.checkout"
-                      target="_blank"
-                    >
+                    <a class="btn btn-info" v-bind:href="domain.checkout" target="_blank">
                       <span class="fa fa-shopping-cart"></span>
                     </a>
                   </div>
@@ -72,30 +65,89 @@ export default {
   },
   data: function() {
     return {
-      prefixes: [],
-      suffixes: []
+      items: {
+        prefix: [],
+        suffix: []
+      }
     };
   },
   methods: {
-    addPrefix(prefix) {
-      this.prefixes.push(prefix);
+    addItem(item) {
+      axios({
+        url: "http://localhost:4000",
+        method: "post",
+        data: {
+          query: `
+            mutation($item: ItemInput){
+              newItem: saveItem(item: $item){
+                id
+                type
+                description
+              }
+            }
+          `,
+          variables: {
+            item
+          }
+        }
+      }).then(response => {
+        const query = response.data;
+        const newItem = query.data.newItem;
+        this.items[item.type].push(newItem);
+      });
     },
-    deletePrefix(prefix) {
-      this.prefixes.splice(this.prefixes.indexOf(prefix), 1);
+    deleteItem(item) {
+      axios({
+        url: "http://localhost:4000",
+        method: "post",
+        data: {
+          query: `
+            mutation ($id: Int){
+              deleted: deleteItem(id: $id)
+            }
+          `,
+          variables: {
+            id: item.id
+          }
+        }
+      }).then(() => {
+        this.getItems(item.type);
+      });
     },
-    addSuffix(suffix) {
-      this.suffixes.push(suffix);
-    },
-    deleteSuffix(suffix) {
-      this.suffixes.splice(this.suffixes.indexOf(suffix), 1);
+    getItems(type) {
+      axios({
+        url: "http://localhost:4000",
+        method: "post",
+        data: {
+          query: `
+            query ($type: String) {
+              items: items (type: $type){
+                id
+                type
+                description
+              }
+          }
+        `,
+          variables: {
+            type
+          }
+        }
+      }).then(response => {
+        const query = response.data;
+        this.items[type] = query.data.items;
+      });
     }
+  },
+  created() {
+    this.getItems("prefix");
+    this.getItems("suffix");
   },
   computed: {
     domains() {
       const domains = [];
-      for (const prefix of this.prefixes) {
-        for (const suffix of this.suffixes) {
-          const name = prefix + suffix;
+      for (const prefix of this.items.prefix) {
+        for (const suffix of this.items.suffix) {
+          const name = prefix.description + suffix.description;
           const url = name.toLowerCase();
           const checkout = `https://domains.google.com/m/registrar/search?searchTerm=${url}`;
           domains.push({
@@ -106,30 +158,6 @@ export default {
       }
       return domains;
     }
-  },
-  created() {
-    axios({
-      url: "http://localhost:4000",
-      method: "post",
-      data: {
-        query: `
-          {
-            prefixes: items (type: "prefix"){
-              id
-              type
-              description
-            }
-            suffixes: items (type: "suffix"){
-              description
-            }
-          }
-        `
-      }
-    }).then(response => {
-      const query = response.data;
-      this.prefixes = query.data.prefixes.map(prefix => prefix.description);
-      this.suffixes = query.data.suffixes.map(suffix => suffix.description);
-    });
   }
 };
 </script>
