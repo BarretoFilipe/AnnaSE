@@ -11,6 +11,7 @@ const typeDefs = `
 
     type Domain{
       name: String
+      extension: String
       checkout: String
       available: Boolean
     }
@@ -28,6 +29,7 @@ const typeDefs = `
       saveItem(item: ItemInput): Item
       deleteItem(id: Int): Boolean
       generateDomains: [Domain]
+      generateDomain(name: String): [Domain]
     }
 
 `;
@@ -82,15 +84,31 @@ const resolvers = {
         for (const suffix of items.filter(item => item.type === "suffix")) {
           const name = prefix.description + suffix.description;
           const url = name.toLowerCase();
-          const checkout = `https://checkout.hostgator.com.br/?a=add&sld=${url}&tld=.com.br`;
-          const available = await isDomainAvailable(`${url}.com.br`);
-          console.log(`${url}.com.br --- ${available}`);
+          const checkout = `https://www.namecheap.com/domains/registration/results/?domain=${url}.io`;
+          const available = await isDomainAvailable(`${url}.io`);
           domains.push({
             name,
             checkout,
             available
           });
         }
+      }
+      return domains;
+    },
+    async generateDomain(_, args) {
+      const name = args.name;
+      const domains = [];
+      const extensions = [".tech", ".dev", ".ai"];
+      for (const extension of extensions) {
+        const url = name.toLowerCase();
+        const checkout = `https://www.namecheap.com/domains/registration/results/?domain=${url}${extension}`;
+        const available = await isDomainAvailable(`${url}${extension}`);
+        domains.push({
+          name,
+          extension,
+          checkout,
+          available
+        });
       }
       return domains;
     }
